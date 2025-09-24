@@ -1,175 +1,143 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Tracker Demo (Geolocation + Typed Capture)</title>
-        <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial; line-height: 1.45; margin: 16px; color: #111 }
-    header { margin-bottom: 12px }
-    .card { background: #fff; border: 1px solid #e6e6e6; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.03) }
-    label { display:block; margin-top:8px; font-weight:600 }
-    input, textarea { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #d0d0d0 }
-    .log { height:240px; overflow:auto; background:#0f1720; color:#e6eef8; padding:8px; border-radius:8px; font-family: monospace; font-size:13px }
-    .muted { color:#6b7280; font-size:13px }
-    .btn { display:inline-block; padding:8px 12px; border-radius:8px; background:#111827; color:#fff; text-decoration:none; margin-top:8px }
-    .small { font-size:13px }
-        </style>
-    </head>
-    <body>
-        <header>
-            <h1>Demo Form with Location Tracking</h1>
-        </header>
-        <section class="card">
-            <h2>Sample Form</h2>
-            <form
-                id="demoForm"
-                autocomplete="on"
-                method="POST"
-                action="/your-backend-endpoint"
-            >
-                <label for="lat">Latitude</label>
-                <input
-                    id="lat"
-                    name="lat"
-                    type="text"
-                    placeholder="latitude"
-                >
-                <label for="lng">Longitude</label>
-                <input
-                    id="lng"
-                    name="lng"
-                    type="text"
-                    placeholder="longitude"
-                >
-                <input type="hidden" id="accuracy" name="accuracy">
-                <button type="submit" class="btn">Submit</button>
-            </form>
-            <p class="muted small">
-                Password fields are explicitly ignored. Mark any element with
-                <code>data-no-track</code>
-                to avoid tracking it.
-            </p>
-            <div id="geoStatus" style="margin-top:8px;font-size:13px;color:#374151"></div>
-        </section>
-        <script>
-          (function() {
-            const googleapikey='AIzaSyBfCmZhcLEgOTNy3NrJo4UxXEGB7HCNON8'; 
-             
-            function logStatus(msg) {
-              const el = document.getElementById('geoStatus');
-              if (el) el.textContent = msg;
-              console.log('[geo]', msg);
-            }
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Hybrid Location Tracker</title>
+    <style>
+      body { font-family: system-ui, Arial; margin: 16px; color: #111 }
+      header { margin-bottom: 12px }
+      .card { background: #fff; border: 1px solid #e6e6e6; padding: 12px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05) }
+      label { display:block; margin-top:8px; font-weight:600 }
+      input { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #d0d0d0 }
+      .btn { display:inline-block; padding:8px 12px; border-radius:8px; background:#111827; color:#fff; text-decoration:none; margin-top:8px; cursor:pointer }
+      .muted { color:#6b7280; font-size:13px }
+      #geoStatus { margin-top:8px; font-size:13px; color:#374151 }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Demo Form with Hybrid Location</h1>
+    </header>
+    <section class="card">
+      <h2>Sample Form</h2>
+      <form id="demoForm" method="POST" action="/your-backend-endpoint">
+        <label for="lat">Latitude</label>
+        <input id="lat" name="lat" type="text" placeholder="latitude">
 
-            function setCoords(lat, lng, accuracy = 10000, source = "ip") {
-              document.getElementById('lat').value = lat;
-              document.getElementById('lng').value = lng;
-              document.getElementById('accuracy').value = accuracy;
-              logStatus(`Location from ${source} — lat: ${lat}, lng: ${lng} (±${Math.round(accuracy)}m)`);
-              getAddressFromLatLng(lat,lng)
-            }
+        <label for="lng">Longitude</label>
+        <input id="lng" name="lng" type="text" placeholder="longitude">
 
-            async function getAddressFromLatLng(lat, lng) {
-              try {
-                const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleapikey}`;
-                const res = await fetch(url);
-                const data = await res.json();
+        <input type="hidden" id="accuracy" name="accuracy">
+        <input type="hidden" id="address" name="address">
 
-                if (data.status === "OK" && data.results.length > 0) {
-                  const address = data.results[0].formatted_address;
-                  logStatus(`Address: ${address}`);
+        <button type="button" class="btn" onclick="getBestLocation()">Get Location</button>
+        <button type="submit" class="btn">Submit</button>
+      </form>
+      <p class="muted">If GPS fails, it will fall back to Google API and then to IP location.</p>
+      <div id="geoStatus"></div>
+    </section>
 
-                  // add hidden input for address
-                  let addressInput = document.getElementById('address');
-                  if (!addressInput) {
-                    addressInput = document.createElement('input');
-                    // addressInput.type = 'hidden';
-                    addressInput.id = 'address';
-                    addressInput.name = 'address';
-                    document.getElementById('demoForm').appendChild(addressInput);
-                  }
-                  addressInput.value = address;
-                } else {
-                  logStatus("No address found for this location.");
-                }
-              } catch (err) {
-                console.error("Geocode error:", err);
-                logStatus("Failed to get address.");
-              }
-            }
+    <script>
+      const googleApiKey = "YOUR_GOOGLE_API_KEY"; // replace with your API key
 
+      function logStatus(msg) {
+        document.getElementById("geoStatus").textContent = msg;
+        console.log("[geo]", msg);
+      }
 
-            function requestLocation(opts = {}) {
-              const options = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 60000,
-                ...opts
-              };
+      function setCoords(lat, lng, accuracy = 10000, source = "unknown") {
+        document.getElementById("lat").value = lat;
+        document.getElementById("lng").value = lng;
+        document.getElementById("accuracy").value = accuracy;
+        logStatus(`Location from ${source} — lat: ${lat}, lng: ${lng} (±${Math.round(accuracy)}m)`);
+        getAddressFromLatLng(lat, lng);
+      }
 
-              if (!navigator.geolocation) {
-                logStatus('Geolocation not supported by this browser.');
-                return Promise.reject(new Error('no-geolocation'));
-              }
+      async function getAddressFromLatLng(lat, lng) {
+        try {
+          const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (data.status === "OK" && data.results.length > 0) {
+            const address = data.results[0].formatted_address;
+            document.getElementById("address").value = address;
+            logStatus(`Address: ${address}`);
+          }
+        } catch (err) {
+          console.error("Geocode error:", err);
+        }
+      }
 
-              logStatus('Requesting GPS location — a permission prompt may appear.');
-
-              return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    console.log(`position`,position)
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
-
-                    setCoords(lat, lng, accuracy, "gps");
-                    resolve({ lat, lng, accuracy, source: 'gps' });
-                  },
-                  (err) => {
-                    let msg = 'Location error';
-                    switch (err.code) {
-                      case err.PERMISSION_DENIED: msg = 'Permission denied.'; break;
-                      case err.POSITION_UNAVAILABLE: msg = 'Position unavailable.'; break;
-                      case err.TIMEOUT: msg = 'Location request timed out.'; break;
-                      default: msg = err.message || 'Unknown error.';
-                    }
-                    logStatus(msg);
-                    reject(new Error(msg));
-                  },
-                  options
-                );
+      function getGpsLocation() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            return reject(new Error("Geolocation not supported"));
+          }
+          navigator.geolocation.getCurrentPosition(
+            pos => {
+              resolve({
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                accuracy: pos.coords.accuracy,
+                source: "gps"
               });
+            },
+            err => reject(err),
+            { enableHighAccuracy: true, timeout: 8000 }
+          );
+        });
+      }
+
+      async function getGoogleLocation() {
+        const url = `https://www.googleapis.com/geolocation/v1/geolocate?key=${googleApiKey}`;
+        const res = await fetch(url, { method: "POST" });
+        if (!res.ok) throw new Error("Google API error");
+        const data = await res.json();
+        return {
+          lat: data.location.lat,
+          lng: data.location.lng,
+          accuracy: data.accuracy,
+          source: "google"
+        };
+      }
+
+      async function getIpLocation() {
+        const res = await fetch("https://ipapi.co/json/");
+        if (!res.ok) throw new Error("IP API error");
+        const data = await res.json();
+        return {
+          lat: data.latitude,
+          lng: data.longitude,
+          accuracy: 50000,
+          source: "ip"
+        };
+      }
+
+      async function getBestLocation() {
+        logStatus("Trying GPS...");
+        try {
+          const gps = await getGpsLocation();
+          setCoords(gps.lat, gps.lng, gps.accuracy, gps.source);
+          return;
+        } catch (e1) {
+          logStatus("GPS failed. Trying Google API...");
+          try {
+            const g = await getGoogleLocation();
+            setCoords(g.lat, g.lng, g.accuracy, g.source);
+            return;
+          } catch (e2) {
+            logStatus("Google API failed. Falling back to IP...");
+            try {
+              const ip = await getIpLocation();
+              setCoords(ip.lat, ip.lng, ip.accuracy, ip.source);
+              return;
+            } catch (e3) {
+              logStatus("All methods failed.");
             }
-
-            async function requestIpFallback() {
-              try {
-                // You can replace ipapi.co with ipinfo.io, ipapi.com, etc.
-                const res = await fetch("https://ipapi.co/json/");
-                if (!res.ok) throw new Error("IP API error");
-                const data = await res.json();
-
-                const lat = data.latitude;
-                const lng = data.longitude;
-                if (lat && lng) {
-                  setCoords(lat, lng, 50000, "ip"); 
-                } else {
-                  logStatus("IP-based location unavailable.");
-                }
-              } catch (e) {
-                console.error("IP fallback failed:", e);
-                logStatus("IP-based fallback failed.");
-              }
-            }
-
-            // Run on load
-            window.addEventListener('load', () => {
-              requestLocation().catch(() => {
-                logStatus("Falling back to IP-based location...");
-                requestIpFallback();
-              });
-            });
-          })();
-        </script>
-    </body>
+          }
+        }
+      }
+    </script>
+  </body>
 </html>
